@@ -188,7 +188,7 @@ class CLIP(nn.Module):
         # avg pooling
         image_features = image_hidden_states.mean(dim=1) # (B, hidden_size_vision)
 
-        text_outputs = self.encode_text(input_ids, attention_mask=attention_mask)
+        text_outputs = self.encode_text(input_ids)
         text_hidden_states = text_outputs.last_hidden_state
         eos_token_id = processor.tokenizer.eos_token_id
         eos_mask = (input_ids == eos_token_id)  
