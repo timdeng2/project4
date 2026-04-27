@@ -306,7 +306,7 @@ def generate_qa_pairs(info_path: str, view_index: int, img_width: int = 150, img
                 {
                     "question": "What kart is the ego car?",
                     "answer": kart['kart_name'],
-                    "image_file": image_file
+                    "caption": "emule is the ego car."
                 }
             )
             center_kart_idx = i

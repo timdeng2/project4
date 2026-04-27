@@ -102,7 +102,13 @@ class CLIP(nn.Module):
         self.vision_encoder = vision_encoder
         self.text_encoder = text_encoder
         # TODO: implement the rest components
-        raise NotImplementedError("Not implemented")
+        self.temperature = nn.Parameter(torch.tensor(1.0 / temperature))
+
+        hidden_size_vision = vision_encoder.config.hidden_size
+        hidden_size_text = text_encoder.config.hidden_size
+
+        self.vision_proj = nn.Linear(hidden_size_vision, proj_dim)
+        self.text_proj = nn.Linear(hidden_size_text, proj_dim)
 
     def encode_image(self, image: torch.Tensor) -> torch.Tensor:
         return self.vision_encoder(image)
@@ -180,7 +186,25 @@ class CLIP(nn.Module):
         Returns:
             TODO: think about the what values should be returned
         """
-        raise NotImplementedError("Not implemented")
+        vision_outputs = self.encode_image(pixel_values)
+        image_hidden_states = vision_outputs.last_hidden_state 
+        # avg pooling
+        image_features = image_hidden_states.mean(dim=1) # (B, hidden_size_vision)
+
+        text_outputs = self.encode_text(input_ids)
+        text_hidden_states = text_outputs.last_hidden_state
+        eos_token_id = processor.tokenizer.eos_token_id
+        eos_mask = (input_ids == eos_token_id)  
+        eos_positions = eos_mask.float().argmax(dim=1) 
+        text_features = text_hidden_states[torch.arange(input_ids.shape[0]), eos_positions] # (B, hidden_size_text)
+
+        image_embeddings = self.vision_proj(image_features) # (B, proj_dim)
+        text_embeddings = self.text_proj(text_features) # (B, proj_dim)
+
+        image_embeddings = nn.functional.normalize(image_embeddings)
+        text_embeddings = nn.functional.normalize(text_embeddings)
+
+        return image_embeddings, text_embeddings, self.temperature
 
 
 def compute_clip_loss(
@@ -199,7 +223,19 @@ def compute_clip_loss(
     Returns:
         The loss for the CLIP model.
     """
-    raise NotImplementedError("Not implemented")
+    image_embeddings, text_embeddings, temperature = outputs
+    
+    n = image_embeddings.shape[0]
+
+    # scaled pairwise cosine similarities [n, n]
+    logits = torch.matmul(image_embeddings, text_embeddings.T) * torch.exp(temperature)
+
+    labs = torch.arange(n, device=image_embeddings.device)
+
+    loss_i = nn.functional.cross_entropy(logits, labs) 
+    loss_t = nn.functional.cross_entropy(logits.T, labs) 
+
+    return (loss_i + loss_t) / 2
 
 
 def get_target_modules_for_lora(model: nn.Module) -> list[str]:
@@ -301,7 +337,7 @@ def train(
 
 def demo_train():
     train(
-        train_dataset_name="train_demo",
+        data_dir="data/train_demo",
         output_dir="demo_clip",
         num_train_epochs=1,
         per_device_train_batch_size=2,
@@ -354,7 +390,7 @@ def test(ckpt_path: str, val_dataset: str = "valid_grader"):
 def main():
     from fire import Fire
 
-    Fire({"train": train, "test": test})
+    Fire({"demo" : demo_train, "train": train, "test": test})
 
 
 if __name__ == "__main__":
