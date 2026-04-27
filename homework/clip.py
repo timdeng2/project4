@@ -102,11 +102,8 @@ class CLIP(nn.Module):
         self.vision_encoder = vision_encoder
         self.text_encoder = text_encoder
         self.temperature = nn.Parameter(torch.log(torch.tensor(1.0 / temperature)))
-
-
         hidden_size_vision = vision_encoder.config.hidden_size
         hidden_size_text = text_encoder.config.hidden_size
-
         self.vision_proj = nn.Linear(hidden_size_vision, proj_dim)
         self.text_proj = nn.Linear(hidden_size_text, proj_dim)
 
@@ -191,7 +188,7 @@ class CLIP(nn.Module):
         # avg pooling
         image_features = image_hidden_states.mean(dim=1) # (B, hidden_size_vision)
 
-        text_outputs = self.encode_text(input_ids)
+        text_outputs = self.encode_text(input_ids, attention_mask=attention_mask)
         text_hidden_states = text_outputs.last_hidden_state
         eos_token_id = processor.tokenizer.eos_token_id
         eos_mask = (input_ids == eos_token_id)  
