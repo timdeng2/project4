@@ -101,7 +101,6 @@ class CLIP(nn.Module):
         super().__init__()
         self.vision_encoder = vision_encoder
         self.text_encoder = text_encoder
-        # TODO: implement the rest components
         self.temperature = nn.Parameter(torch.tensor(1.0 / temperature))
 
         hidden_size_vision = vision_encoder.config.hidden_size
